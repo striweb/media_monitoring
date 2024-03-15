@@ -1,10 +1,11 @@
 from flask import Flask, jsonify
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
+import re  # For regular expression-based whole word matching
 
 app = Flask(__name__)
 
@@ -20,7 +21,6 @@ def load_config_from_url(url):
     else:
         raise Exception(f"Failed to load configuration from {url}")
 
-# Load sites and keywords from the JSON URL
 config_url = 'http://striweb.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
@@ -38,6 +38,11 @@ def get_clean_text(element):
         soup = BeautifulSoup(element.text, 'lxml')
         return ' '.join(soup.get_text().split())
     return ""
+
+def contains_keyword(content, keyword):
+    # Prepare a regular expression for whole-word matching, case-insensitive
+    pattern = r'\b' + re.escape(keyword) + r'\b'
+    return re.search(pattern, content, re.IGNORECASE) is not None
 
 @app.route('/run-script')
 def run_script():
@@ -61,10 +66,10 @@ def run_script():
 
                 media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
 
-                content = f"{title} {description_text}"
+                content = f"{title} {description_text}".lower()
 
                 for keyword in keywords:
-                    if keyword.lower() in content.lower():
+                    if contains_keyword(content, keyword):
                         copy_date = datetime.now()
                         collection.update_one(
                             {"link": link},
