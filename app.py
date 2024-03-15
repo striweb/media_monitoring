@@ -43,7 +43,7 @@ def contains_keyword(content, keyword):
     pattern = r'\b' + re.escape(keyword) + r'\b'
     return re.search(pattern, content, re.IGNORECASE) is not None
 
-def process_items_recursive(items, index=0):
+def process_items_recursive(items, site, index=0):  # Added 'site' as a parameter
     if index >= len(items):
         return  # Base case: no more items to process
     
@@ -71,7 +71,7 @@ def process_items_recursive(items, index=0):
             collection.update_one(
                 {"link": link},
                 {"$setOnInsert": {
-                    "site": site,
+                    "site": site,  # Now using 'site' passed as a parameter
                     "keyword": keyword,
                     "title": title,
                     "pub_date": pub_date if pub_date else datetime.now(),
@@ -82,22 +82,20 @@ def process_items_recursive(items, index=0):
                 upsert=True
             )
     
-    # Recursively process the next item
-    process_items_recursive(items, index + 1)
+    # Recursively process the next item, pass 'site'
+    process_items_recursive(items, site, index + 1)
 
 def process_feeds_recursive(feeds, index=0):
     if index >= len(feeds):
         return  # Base case: no more feeds to process
     
-    site = feeds[index]
+    site = feeds[index]  # 'site' is defined here
     response = requests.get(site)
     soup = BeautifulSoup(response.content, 'xml')
     items = soup.findAll('item')
     
-    process_items_recursive(items)  # Process all items in the current feed recursively
-    
-    # Recursively process the next feed
-    process_feeds_recursive(feeds, index + 1)
+    # Pass 'site' along with 'items' to the recursive function
+    process_items_recursive(items, site)  # 'site' is now passed to 'process_items_recursive'
 
 @app.route('/run-script')
 def run_script():
