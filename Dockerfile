@@ -1,20 +1,31 @@
 # Use an official Python runtime as a parent image
-FROM python:3.8-slim
+FROM python:3.9-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y netcat-openbsd gcc \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install any needed packages specified in requirements.txt
+# Install Python dependencies
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 5000 available to the world outside this container
+# Install gunicorn
+RUN pip install gunicorn
+
+# Copy the Flask application code into the container
+COPY . /app/
+
+# Expose port 5000 to the outside world
 EXPOSE 5000
 
-# Define environment variable
-ENV NAME World
-
-# Run app.py when the container launches
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Command to run the Flask application
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
