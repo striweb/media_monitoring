@@ -7,7 +7,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Adjust MongoDB Connection for Docker
-client = MongoClient('mongodb://mongodb:27017/')
+client = MongoClient('mongodb://localhost:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
