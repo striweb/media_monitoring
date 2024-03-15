@@ -5,6 +5,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
+import json  # Add this import
 
 app = Flask(__name__)
 
@@ -12,8 +13,11 @@ client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
-sites = ['https://www.maximbehar.com/bg/blog/rss', 'https://www.dnes.bg/rss.php?today']
-keywords = ['Hot21', 'Behar', 'влюбят']
+# Load sites and keywords from the JSON file
+with open('config.json', 'r') as f:
+    config = json.load(f)
+sites = config['sites']
+keywords = config['keywords']
 
 def find_pub_date(item):
     for field in ['pubDate', 'dc:date']:
@@ -56,7 +60,7 @@ def run_script():
                     if keyword.lower() in content.lower():
                         copy_date = datetime.now()
                         collection.update_one(
-                            {"link": link},  # Changed to use link as a unique identifier since descriptions can be repetitive
+                            {"link": link},
                             {"$setOnInsert": {
                                 "site": site,
                                 "keyword": keyword,
