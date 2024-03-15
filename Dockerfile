@@ -4,6 +4,8 @@ FROM python:3.9-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
 
 # Set the working directory in the container
 WORKDIR /app
@@ -27,5 +29,5 @@ COPY . /app/
 # Expose port 5000 to the outside world
 EXPOSE 5000
 
-# Command to run the Flask application
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
+# Command to run the Flask application using Flask's development server for debugging
+CMD ["flask", "run"]
