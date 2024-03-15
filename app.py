@@ -3,11 +3,13 @@ from bs4 import BeautifulSoup
 import requests
 from pymongo import MongoClient
 from datetime import datetime
+import traceback  # Import the traceback module for detailed error logging
 
 app = Flask(__name__)
 
 # Adjust MongoDB Connection for Docker
-client = MongoClient('mongodb://localhost:27017/')
+# Ensure to change this to 'mongodb://mongodb:27017/' to connect to the MongoDB service in Docker
+client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
@@ -57,8 +59,9 @@ def run_script():
         # Return a response indicating successful execution
         return jsonify({"message": "Script ran successfully!"})
     except Exception as e:
-        # Log the exception and return an error response
-        app.logger.error(f"An error occurred: {e}")
+        # Use traceback to log the full exception traceback for better diagnosis
+        error_info = traceback.format_exc()
+        app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
         return jsonify({"error": "An internal error occurred."}), 500
 
 if __name__ == '__main__':
