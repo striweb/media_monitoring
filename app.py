@@ -1,17 +1,12 @@
-from threading import Thread
-from flask import Flask
-
+from flask import Flask, jsonify
 app = Flask(__name__)
 
-def run_script_background():
-    # Your script's code here or call to main script function
-    pass  # Placeholder for your actual code
-
-@app.route('/start-task')
-def start_task():
-    thread = Thread(target=run_script_background)
-    thread.start()
-    return "Task started in the background!"
+@app.route('/run-script')
+def run_script():
+    # Place your script code here or call it as a function
+    # For demonstration, let's say your script returns a dictionary of data
+    data = {"message": "Script ran successfully!"}
+    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
