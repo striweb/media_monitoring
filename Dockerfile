@@ -16,10 +16,10 @@ RUN apt-get update \
 
 # Install Python dependencies
 COPY requirements.txt /app/
-RUN python3 install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install gunicorn
-RUN python3 install gunicorn
+RUN pip install gunicorn
 
 # Copy the Flask application code into the container
 COPY . /app/
