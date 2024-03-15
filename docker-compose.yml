@@ -1,14 +1,14 @@
 version: '3'
 
 services:
-  flask:
-    build: .
-    ports:
-      - "5000:5000"
-    depends_on:
-      - mongodb
-
   mongodb:
-    image: mongo
+    image: mongo:latest
+    container_name: mongodb
     ports:
       - "27017:27017"
+
+  flask:
+    build: .
+    container_name: flask
+    ports:
+      - "8081:5000"
