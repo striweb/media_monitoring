@@ -13,8 +13,8 @@ db = client['media_monitoring']
 collection = db['alerts']
 
 # RSS Feed URLs and Keywords
-sites = ['https://www.maximbehar.com/bg/blog/rss', 'https://www.news24sofia.eu/feed/']
-keywords = ['Hot21', 'Behar', 'БСП']
+sites = ['https://www.maximbehar.com/bg/blog/rss', 'https://www.dnes.bg/rss.php?today']
+keywords = ['Hot21', 'Behar', 'влюбят']
 
 @app.route('/run-script')
 def run_script():
