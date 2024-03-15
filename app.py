@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
-import re
+import re  # For regular expression-based whole word matching
 
 app = Flask(__name__)
 
@@ -49,27 +49,45 @@ def check_words_recursive(words, keywords, index=0):
 
 def process_items_recursive(items, site, index=0):
     if index >= len(items):
-        return
+        return  # All items processed
     item = items[index]
-    title = get_clean_text(item.find('title'))
-    description = get_clean_text(item.find('description'))
+    title = get_clean_text(item.find('title')) if item.find('title') else 'No Title'
+    description = get_clean_text(item.find('description')) if item.find('description') else 'No Description'
+    pub_date = find_pub_date(item)
+    link = item.find('link').text if item.find('link') else 'No Link'
+    media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
     content = f"{title} {description}".lower()
     words = content.split()
-    keyword_found = check_words_recursive(words, keywords)
-    if keyword_found:
-        # Perform MongoDB update or other actions as needed
-        pass
-    process_items_recursive(items, site, index + 1)
+
+    # Checking if any word matches the keywords
+    if check_words_recursive(words, keywords):
+        print(f"Inserting/updating MongoDB for title: {title}")
+        collection.update_one(
+            {"link": link}, 
+            {"$setOnInsert": {
+                "site": site,
+                "title": title,
+                "description": description,
+                "pub_date": pub_date,
+                "link": link,
+                "media_urls": media_urls,
+                "last_checked": datetime.now()
+            }}, 
+            upsert=True
+        )
+    
+    process_items_recursive(items, site, index + 1)  # Recurse to process the next item
 
 def process_feeds_recursive(feeds, index=0):
     if index >= len(feeds):
-        return
+        return  # All feeds processed
     site = feeds[index]
+    print(f"Processing feed: {site}")
     response = requests.get(site)
     soup = BeautifulSoup(response.content, 'xml')
     items = soup.findAll('item')
-    process_items_recursive(items, site)
-    process_feeds_recursive(feeds, index + 1)
+    process_items_recursive(items, site)  # Process items of the current feed
+    process_feeds_recursive(feeds, index + 1)  # Recurse to process the next feed
 
 @app.route('/run-script')
 def run_script():
