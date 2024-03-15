@@ -5,7 +5,6 @@ from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
-import json  # Add this import
 
 app = Flask(__name__)
 
@@ -13,9 +12,17 @@ client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
-# Load sites and keywords from the JSON file
-with open('https://striweb.com/media_monitoring_info.json', 'r') as f:
-    config = json.load(f)
+# Function to load configuration from a JSON URL
+def load_config_from_url(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Failed to load configuration from {url}")
+
+# Load sites and keywords from the JSON URL
+config_url = 'https://striweb.com/media_monitoring_info.json'
+config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = config['keywords']
 
