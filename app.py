@@ -1,9 +1,10 @@
 from flask import Flask, jsonify
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, CData
 import requests
 from pymongo import MongoClient
 from datetime import datetime
 import traceback
+import dateutil.parser  # You might need to add 'python-dateutil' to your requirements.txt
 
 app = Flask(__name__)
 
@@ -16,6 +17,23 @@ collection = db['alerts']
 sites = ['https://www.maximbehar.com/bg/blog/rss', 'https://www.dnes.bg/rss.php?today']
 keywords = ['Hot21', 'Behar', 'влюбят']
 
+def find_pub_date(item):
+    # Try various fields for publication date
+    for field in ['pubDate', 'dc:date']:
+        date_str = item.find(field)
+        if date_str:
+            return dateutil.parser.parse(date_str.text)
+    return None  # or return a default date
+
+def get_description(item):
+    # Handle both CDATA and regular text
+    description = item.find('description')
+    if description:
+        if isinstance(description.contents[0], CData):
+            return description.contents[0]
+        return description.text
+    return ""
+
 @app.route('/run-script')
 def run_script():
     try:
@@ -26,12 +44,12 @@ def run_script():
 
             for item in items:
                 title = item.find('title').text
-                description_html = item.find('description').text
-                description_text = BeautifulSoup(description_html, 'lxml').get_text()
-                pub_date = item.find('pubDate').text
+                description_text = get_description(item)
+                pub_date = find_pub_date(item)
                 link = item.find('link').text
 
                 media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
+                # You might want to extend this with additional logic for <media:content>
 
                 content = f"{title} {description_text}"
 
