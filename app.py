@@ -67,16 +67,14 @@ def run_script():
 
                 content = f"{title} {description_text}".lower()
 
-                # Debugging: Print content and direct check for "да"
-                print(f"Content: {content[:100]}")  # Print the first 100 characters of content for debugging
-                if "да" in content:
-                    print(f"Found 'да' in content for site: {site}")
+                print(f"Content for debugging: {content}")  # Debugging: print content being processed
 
                 for keyword in keywords:
-                    print(f"Checking keyword: '{keyword}'")  # Debugging: print each keyword being checked
                     if contains_keyword(content, keyword):
+                        print(f"Match found for keyword: '{keyword}' in content")  # Debugging: confirm keyword match
                         copy_date = datetime.now()
-                        collection.update_one(
+                        # MongoDB update operation
+                        result = collection.update_one(
                             {"link": link},
                             {"$setOnInsert": {
                                 "site": site,
@@ -89,6 +87,7 @@ def run_script():
                             }},
                             upsert=True
                         )
+                        print(f"MongoDB update result for '{keyword}': {result.upserted_id}")  # Debugging: log update result
 
         return jsonify({"message": "Script ran successfully!"})
     except Exception as e:
