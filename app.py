@@ -23,8 +23,9 @@ def find_pub_date(item):
     return None
 
 def get_clean_text(element):
-    if element:
-        return ' '.join(BeautifulSoup(element, 'lxml').get_text().split())
+    if element and element.text:
+        soup = BeautifulSoup(element.text, 'lxml')
+        return ' '.join(soup.get_text().split())
     return ""
 
 @app.route('/run-script')
@@ -36,11 +37,16 @@ def run_script():
             items = soup.findAll('item')
 
             for item in items:
-                title = get_clean_text(item.find('title').text)
-                description_html = item.find('description')
-                description_text = get_clean_text(description_html)
+                title_element = item.find('title')
+                title = get_clean_text(title_element) if title_element else 'No Title'
+
+                description_element = item.find('description')
+                description_text = get_clean_text(description_element) if description_element else 'No Description'
+
                 pub_date = find_pub_date(item)
-                link = item.find('link').text
+                
+                link_element = item.find('link')
+                link = link_element.text if link_element else 'No Link'
 
                 media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
 
@@ -50,13 +56,13 @@ def run_script():
                     if keyword.lower() in content.lower():
                         copy_date = datetime.now()
                         collection.update_one(
-                            {"description": description_text},
+                            {"link": link},  # Changed to use link as a unique identifier since descriptions can be repetitive
                             {"$setOnInsert": {
                                 "site": site,
                                 "keyword": keyword,
                                 "title": title,
-                                "pub_date": pub_date,
-                                "link": link,
+                                "pub_date": pub_date if pub_date else datetime.now(),
+                                "description": description_text,
                                 "media_urls": media_urls,
                                 "copy_date": copy_date
                             }},
