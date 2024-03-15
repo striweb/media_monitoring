@@ -14,7 +14,7 @@ collection = db['alerts']
 
 # RSS Feed URLs and Keywords
 sites = ['https://www.maximbehar.com/bg/blog/rss', 'https://www.news24sofia.eu/feed/']
-keywords = ['Hot21', 'Behar']
+keywords = ['Hot21', 'Behar', 'БСП']
 
 @app.route('/run-script')
 def run_script():
