@@ -1,6 +1,7 @@
-from bs4 import BeautifulSoup 
+from bs4 import BeautifulSoup
 import requests
 from pymongo import MongoClient
+from datetime import datetime
 
 # MongoDB Connection
 client = MongoClient('mongodb://localhost:27017/')
@@ -18,20 +19,32 @@ for site in sites:
 
     for item in items:
         title = item.find('title').text
-        # Use BeautifulSoup to parse the description and get text to remove HTML
         description_html = item.find('description').text
         description_text = BeautifulSoup(description_html, 'lxml').get_text()
 
-        # Combine title and description for keyword search
+        # Extract the publication date
+        pub_date = item.find('pubDate').text
+
+        # Attempt to extract media content (e.g., images, videos) from <enclosure> tags
+        media_urls = []
+        for enclosure in item.find_all('enclosure'):
+            if 'url' in enclosure.attrs:
+                media_urls.append(enclosure['url'])
+
         content = f"{title} {description_text}"
 
         for keyword in keywords:
             if keyword.lower() in content.lower():
-                # Store in MongoDB - Adjusted to include more relevant fields
+                copy_date = datetime.now()  # Current date and time
+                # Store in MongoDB with pubDate, media URLs, and copy date
                 collection.insert_one({
                     "site": site,
                     "keyword": keyword,
                     "title": title,
-                    "description": description_text,  # Save cleaned description
-                    "link": item.find('link').text  # Include link to the original article/post
+                    "description": description_text,  # Cleaned description
+                    "link": item.find('link').text,  # Article/post link
+                    "pub_date": pub_date,  # Publication date
+                    "media_urls": media_urls,  # Media URLs
+                    "copy_date": copy_date  # Copy date
                 })
+
