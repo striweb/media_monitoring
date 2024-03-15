@@ -13,7 +13,7 @@ db = client['media_monitoring']
 collection = db['alerts']
 
 sites = ['https://www.maximbehar.com/bg/blog/rss', 'https://www.dnes.bg/rss.php?today']
-keywords = ['Hot21', 'Behar', 'влюбят]
+keywords = ['Hot21', 'Behar', 'влюбят']
 
 def find_pub_date(item):
     for field in ['pubDate', 'dc:date']:
