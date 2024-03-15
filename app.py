@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
-import re  # For regular expression-based whole word matching
+import re
 
 app = Flask(__name__)
 
@@ -13,7 +13,6 @@ client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
-# Function to load configuration from a JSON URL
 def load_config_from_url(url):
     response = requests.get(url, headers={'Accept-Charset': 'UTF-8'})
     if response.status_code == 200:
@@ -24,7 +23,7 @@ def load_config_from_url(url):
 config_url = 'http://striweb.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
-keywords = config['keywords']
+keywords = [keyword.lower() for keyword in config['keywords']]  # Ensure keywords are in lowercase for matching
 
 def find_pub_date(item):
     for field in ['pubDate', 'dc:date']:
@@ -39,63 +38,38 @@ def get_clean_text(element):
         return ' '.join(soup.get_text().split())
     return ""
 
-def contains_keyword(content, keyword):
-    pattern = r'\b' + re.escape(keyword) + r'\b'
-    return re.search(pattern, content, re.IGNORECASE) is not None
+def check_words_recursive(words, keywords, index=0):
+    if index >= len(words):
+        return False
+    word = words[index].lower()  # Convert to lowercase for case-insensitive comparison
+    if word in keywords:
+        print(f"Keyword '{word}' found.")
+        return True
+    return check_words_recursive(words, keywords, index + 1)
 
-def process_items_recursive(items, site, index=0):  # Added 'site' as a parameter
+def process_items_recursive(items, site, index=0):
     if index >= len(items):
-        return  # Base case: no more items to process
-    
+        return
     item = items[index]
-    title_element = item.find('title')
-    title = get_clean_text(title_element) if title_element else 'No Title'
-
-    description_element = item.find('description')
-    description_text = get_clean_text(description_element) if description_element else 'No Description'
-
-    pub_date = find_pub_date(item)
-    
-    link_element = item.find('link')
-    link = link_element.text if link_element else 'No Link'
-
-    media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
-
-    content = f"{title} {description_text}".lower()
-
-    for keyword in keywords:
-        if contains_keyword(content, keyword):
-            print(f"Match found for keyword: '{keyword}' in content")  # Debugging
-            copy_date = datetime.now()
-            # MongoDB update operation
-            collection.update_one(
-                {"link": link},
-                {"$setOnInsert": {
-                    "site": site,  # Now using 'site' passed as a parameter
-                    "keyword": keyword,
-                    "title": title,
-                    "pub_date": pub_date if pub_date else datetime.now(),
-                    "description": description_text,
-                    "media_urls": media_urls,
-                    "copy_date": copy_date
-                }},
-                upsert=True
-            )
-    
-    # Recursively process the next item, pass 'site'
+    title = get_clean_text(item.find('title'))
+    description = get_clean_text(item.find('description'))
+    content = f"{title} {description}".lower()
+    words = content.split()
+    keyword_found = check_words_recursive(words, keywords)
+    if keyword_found:
+        # Perform MongoDB update or other actions as needed
+        pass
     process_items_recursive(items, site, index + 1)
 
 def process_feeds_recursive(feeds, index=0):
     if index >= len(feeds):
-        return  # Base case: no more feeds to process
-    
-    site = feeds[index]  # 'site' is defined here
+        return
+    site = feeds[index]
     response = requests.get(site)
     soup = BeautifulSoup(response.content, 'xml')
     items = soup.findAll('item')
-    
-    # Pass 'site' along with 'items' to the recursive function
-    process_items_recursive(items, site)  # 'site' is now passed to 'process_items_recursive'
+    process_items_recursive(items, site)
+    process_feeds_recursive(feeds, index + 1)
 
 @app.route('/run-script')
 def run_script():
@@ -105,7 +79,7 @@ def run_script():
     except Exception as e:
         error_info = traceback.format_exc()
         app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
-        return jsonify({"error": "An internal error occurred."}), 500
+        return jsonify({"error": "An internal error occurred."})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
