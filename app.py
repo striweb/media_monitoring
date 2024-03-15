@@ -15,7 +15,7 @@ collection = db['alerts']
 
 # Function to load configuration from a JSON URL
 def load_config_from_url(url):
-    response = requests.get(url)
+    response = requests.get(url, headers={'Accept-Charset': 'UTF-8'})
     if response.status_code == 200:
         return response.json()
     else:
@@ -40,7 +40,6 @@ def get_clean_text(element):
     return ""
 
 def contains_keyword(content, keyword):
-    # Prepare a regular expression for whole-word matching, case-insensitive
     pattern = r'\b' + re.escape(keyword) + r'\b'
     return re.search(pattern, content, re.IGNORECASE) is not None
 
@@ -68,7 +67,13 @@ def run_script():
 
                 content = f"{title} {description_text}".lower()
 
+                # Debugging: Print content and direct check for "да"
+                print(f"Content: {content[:100]}")  # Print the first 100 characters of content for debugging
+                if "да" in content:
+                    print(f"Found 'да' in content for site: {site}")
+
                 for keyword in keywords:
+                    print(f"Checking keyword: '{keyword}'")  # Debugging: print each keyword being checked
                     if contains_keyword(content, keyword):
                         copy_date = datetime.now()
                         collection.update_one(
