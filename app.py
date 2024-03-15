@@ -21,7 +21,7 @@ def load_config_from_url(url):
         raise Exception(f"Failed to load configuration from {url}")
 
 # Load sites and keywords from the JSON URL
-config_url = 'https://striweb.com/media_monitoring_info.json'
+config_url = 'http://striweb.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = config['keywords']
