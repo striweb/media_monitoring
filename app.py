@@ -14,7 +14,7 @@ db = client['media_monitoring']
 collection = db['alerts']
 
 # Load sites and keywords from the JSON file
-with open('config.json', 'r') as f:
+with open('https://striweb.com/media_monitoring_info.json', 'r') as f:
     config = json.load(f)
 sites = config['sites']
 keywords = config['keywords']
