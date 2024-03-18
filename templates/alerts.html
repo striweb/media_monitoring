@@ -2,23 +2,62 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alerts</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-    <h1>Alerts</h1>
-    {% if alerts %}
-        <ul>
-        {% for alert in alerts %}
-            <li>
-                <strong>Title:</strong> {{ alert.title }}<br>
-                <strong>Description:</strong> {{ alert.description }}<br>
-                <strong>Date:</strong> {{ alert.pub_date }}<br>
-                <strong>Link:</strong> <a href="{{ alert.link }}">{{ alert.link }}</a><br>
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>No alerts found.</p>
-    {% endif %}
+    <div class="container mt-5">
+        <h2 class="mb-4">Latest Alerts</h2>
+        <div class="list-group">
+            {% for alert in alerts %}
+            <a href="{{ alert['link'] }}" class="list-group-item list-group-item-action flex-column align-items-start" target="_blank">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ alert['title'] }}</h5>
+                    <small>{{ alert['pub_date'] }}</small>
+                </div>
+                <p class="mb-1">{{ alert['description'] }}</p>
+                {% if alert['media_urls'] %}
+                    {% for url in alert['media_urls'] %}
+                        <img src="{{ url }}" class="img-fluid mt-2" alt="Media" style="max-height: 200px;">
+                    {% endfor %}
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        <nav aria-label="Page navigation example" class="mt-4">
+            <ul class="pagination">
+                {% if current_page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('show_alerts', page=current_page-1) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in range(1, total_pages + 1) %}
+                <li class="page-item {{ 'active' if page_num == current_page else '' }}">
+                    <a class="page-link" href="{{ url_for('show_alerts', page=page_num) }}">{{ page_num }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if current_page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('show_alerts', page=current_page+1) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Bootstrap JS, Popper.js, and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
