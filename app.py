@@ -6,6 +6,8 @@ from datetime import datetime
 import traceback
 import dateutil.parser
 import re
+import redis
+import json
 
 app = Flask(__name__)
 
@@ -13,14 +15,21 @@ client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
-def load_config_from_url(url):
-    response = requests.get(url, headers={'Accept-Charset': 'UTF-8'})
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Failed to load configuration from {url}")
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 
-config_url = 'http://striweb.com/media_monitoring_info.json'
+def load_config_from_url(url):
+    cached_config = redis_client.get('config')
+    if cached_config:
+        return json.loads(cached_config)
+    else:
+        response = requests.get(url, headers={'Accept-Charset': 'UTF-8'})
+        if response.status_code == 200:
+            redis_client.setex('config', 86400, response.text)
+            return response.json()
+        else:
+            raise Exception(f"Failed to load configuration from {url}")
+
+config_url = 'media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
@@ -43,7 +52,6 @@ def check_words_recursive(words, keywords, index=0):
         return False
     word = words[index].lower()
     if word in keywords:
-        print(f"Keyword '{word}' found.")
         return True
     return check_words_recursive(words, keywords, index + 1)
 
@@ -60,7 +68,6 @@ def process_items_recursive(items, site, index=0):
     words = content.split()
 
     if check_words_recursive(words, keywords):
-        print(f"Inserting/updating MongoDB for title: {title}")
         collection.update_one(
             {"link": link}, 
             {"$setOnInsert": {
@@ -74,14 +81,12 @@ def process_items_recursive(items, site, index=0):
             }}, 
             upsert=True
         )
-    
     process_items_recursive(items, site, index + 1)
 
 def process_feeds_recursive(feeds, index=0):
     if index >= len(feeds):
         return
     site = feeds[index]
-    print(f"Processing feed: {site}")
     response = requests.get(site)
     soup = BeautifulSoup(response.content, 'xml')
     items = soup.findAll('item')
