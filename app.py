@@ -6,7 +6,7 @@ import re
 app = Flask(__name__)
 
 	@@ -23,7 +23,7 @@ def load_config_from_url(url):
-config_url = 'http://striweb.com/media_monitoring_info.json'
+config_url = 'media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
