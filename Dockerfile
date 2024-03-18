@@ -30,4 +30,8 @@ COPY . /app/
 EXPOSE 5000
 
 # Command to run the Flask application using Flask's development server for debugging
-CMD ["flask", "run"]
+#CMD ["flask", "run"]
+#CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
+CMD ["flask", "run", "--host=0.0.0.0"]
+
+

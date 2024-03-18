@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template, request
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
@@ -20,7 +20,7 @@ def load_config_from_url(url):
     else:
         raise Exception(f"Failed to load configuration from {url}")
 
-config_url = 'media_monitoring_info.json'
+config_url = 'http://striweb.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
@@ -43,7 +43,6 @@ def check_words_recursive(words, keywords, index=0):
         return False
     word = words[index].lower()
     if word in keywords:
-        print(f"Keyword '{word}' found.")
         return True
     return check_words_recursive(words, keywords, index + 1)
 
@@ -60,7 +59,6 @@ def process_items_recursive(items, site, index=0):
     words = content.split()
 
     if check_words_recursive(words, keywords):
-        print(f"Inserting/updating MongoDB for title: {title}")
         collection.update_one(
             {"link": link}, 
             {"$setOnInsert": {
@@ -74,25 +72,35 @@ def process_items_recursive(items, site, index=0):
             }}, 
             upsert=True
         )
-    
     process_items_recursive(items, site, index + 1)
 
 def process_feeds_recursive(feeds, index=0):
     if index >= len(feeds):
         return
     site = feeds[index]
-    print(f"Processing feed: {site}")
     response = requests.get(site)
     soup = BeautifulSoup(response.content, 'xml')
     items = soup.findAll('item')
     process_items_recursive(items, site)
     process_feeds_recursive(feeds, index + 1)
 
+@app.route('/alerts')
+def show_alerts():
+    page = int(request.args.get('page', 1))
+    per_page = 5
+    skip = (page - 1) * per_page
+
+    alerts = collection.find({}).skip(skip).limit(per_page)
+    total_alerts = collection.count_documents({})
+    total_pages = (total_alerts + per_page - 1) // per_page
+
+    return render_template('alerts.html', alerts=list(alerts), total_pages=total_pages, current_page=page)
+
 @app.route('/run-script')
 def run_script():
     try:
         process_feeds_recursive(sites)
-        return jsonify({"message": "Script ran successfully!"})
+        return jsonify({"message": "The script was executed successfully!"})
     except Exception as e:
         error_info = traceback.format_exc()
         app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
@@ -100,3 +108,4 @@ def run_script():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+    
