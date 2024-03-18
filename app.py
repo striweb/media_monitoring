@@ -84,7 +84,7 @@ def process_feeds_recursive(feeds, index=0):
     process_items_recursive(items, site)
     process_feeds_recursive(feeds, index + 1)
 
-@app.route('/news')
+@app.route('/alerts')
 def show_alerts():
     page = int(request.args.get('page', 1))
     per_page = 5
@@ -94,7 +94,7 @@ def show_alerts():
     total_alerts = collection.count_documents({})
     total_pages = (total_alerts + per_page - 1) // per_page
 
-    return render_template('news.html', alerts=list(alerts), total_pages=total_pages, current_page=page)
+    return render_template('alerts.html', alerts=list(alerts), total_pages=total_pages, current_page=page)
 
 @app.route('/run-script')
 def run_script():
