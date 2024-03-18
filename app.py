@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
@@ -46,6 +46,7 @@ def check_words_recursive(words, keywords, index=0):
         print(f"Keyword '{word}' found.")
         return True
     return check_words_recursive(words, keywords, index + 1)
+
 def process_items_recursive(items, site, index=0):
     if index >= len(items):
         return
@@ -59,7 +60,6 @@ def process_items_recursive(items, site, index=0):
     words = content.split()
 
     if check_words_recursive(words, keywords):
-        print(f"Inserting/updating MongoDB for title: {title}")
         collection.update_one(
             {"link": link}, 
             {"$setOnInsert": {
@@ -73,19 +73,18 @@ def process_items_recursive(items, site, index=0):
             }}, 
             upsert=True
         )
-    
     process_items_recursive(items, site, index + 1)
 
 def process_feeds_recursive(feeds, index=0):
     if index >= len(feeds):
         return
     site = feeds[index]
-    print(f"Processing feed: {site}")
     response = requests.get(site)
     soup = BeautifulSoup(response.content, 'xml')
     items = soup.findAll('item')
     process_items_recursive(items, site)
     process_feeds_recursive(feeds, index + 1)
+    
 @app.route('/run-script')
 def run_script():
     try:
@@ -95,5 +94,12 @@ def run_script():
         error_info = traceback.format_exc()
         app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
         return jsonify({"error": "An internal error occurred."})
+
+@app.route('/alerts')
+def show_alerts():
+    alerts = collection.find({})
+    alerts_list = list(alerts)
+    return render_template('alerts.html', alerts=alerts_list)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
