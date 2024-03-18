@@ -18,11 +18,6 @@
                     <small>{{ alert['pub_date'] }}</small>
                 </div>
                 <p class="mb-1">{{ alert['description'] }}</p>
-                {% if alert['media_urls'] %}
-                    {% for url in alert['media_urls'] %}
-                        <img src="{{ url }}" class="img-fluid mt-2" alt="Media" style="max-height: 200px;">
-                    {% endfor %}
-                {% endif %}
             </a>
             {% endfor %}
         </div>

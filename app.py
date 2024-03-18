@@ -100,7 +100,7 @@ def show_alerts():
 def run_script():
     try:
         process_feeds_recursive(sites)
-        return jsonify({"message": "Script ran successfully!"})
+        return jsonify({"message": "The script was executed successfully!"})
     except Exception as e:
         error_info = traceback.format_exc()
         app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
