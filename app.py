@@ -1,7 +1,3 @@
-from flask import Flask, jsonify
-import requests
-from bs4 import BeautifulSoup
-from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
@@ -9,35 +5,15 @@ import re
 
 app = Flask(__name__)
 
-client = MongoClient('mongodb://mongodb:27017/')
-db = client['media_monitoring']
-collection = db['alerts']
-
-def load_config_from_url(url):
-    response = requests.get(url, headers={'Accept-Charset': 'UTF-8'})
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Failed to load configuration from {url}")
-
-config_url = 'media_monitoring_info.json'
+	@@ -23,7 +23,7 @@ def load_config_from_url(url):
+config_url = 'http://striweb.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
 
 def find_pub_date(item):
     for field in ['pubDate', 'dc:date']:
-        date_str = item.find(field)
-        if date_str:
-            return dateutil.parser.parse(date_str.text)
-    return None
-
-def get_clean_text(element):
-    if element and element.text:
-        soup = BeautifulSoup(element.text, 'lxml')
-        return ' '.join(soup.get_text().split())
-    return ""
-
+	@@ -41,15 +41,15 @@ def get_clean_text(element):
 def check_words_recursive(words, keywords, index=0):
     if index >= len(words):
         return False
@@ -53,28 +29,17 @@ def process_items_recursive(items, site, index=0):
     item = items[index]
     title = get_clean_text(item.find('title')) if item.find('title') else 'No Title'
     description = get_clean_text(item.find('description')) if item.find('description') else 'No Description'
-    pub_date = find_pub_date(item)
-    link = item.find('link').text if item.find('link') else 'No Link'
-    media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
+	@@ -59,7 +59,6 @@ def process_items_recursive(items, site, index=0):
     content = f"{title} {description}".lower()
     words = content.split()
 
     if check_words_recursive(words, keywords):
         print(f"Inserting/updating MongoDB for title: {title}")
         collection.update_one(
-            {"link": link}, 
-            {"$setOnInsert": {
-                "site": site,
-                "title": title,
-                "description": description,
-                "pub_date": pub_date,
-                "link": link,
-                "media_urls": media_urls,
-                "last_checked": datetime.now()
-            }}, 
+	@@ -76,18 +75,18 @@ def process_items_recursive(items, site, index=0):
             upsert=True
         )
-    
+
     process_items_recursive(items, site, index + 1)
 
 def process_feeds_recursive(feeds, index=0):
