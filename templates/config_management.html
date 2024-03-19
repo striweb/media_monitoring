@@ -9,22 +9,22 @@
 <body>
     <div class="container mt-5">
         <h2>Manage Configuration</h2>
-
+<hr>
         <h3>Current Sites</h3>
-<ul>
+
     {% for site in sites %}
-    <li>{{ site }} <a class="btn btn-danger" href="/delete-site/{{ loop.index0 }}" role="button">Delete</a>
-    </li>
+        {{ site }} <a class="btn btn-danger" href="/delete-site/{{ loop.index0 }}" role="button">Delete</a>
+        <hr>
     {% endfor %}
-</ul>
+
 
 <h3>Current Keywords</h3>
-<ul>
+
     {% for keyword in keywords %}
-    <li>{{ keyword }} <a class="btn btn-danger" href="/delete-keyword/{{ loop.index0 }}" role="button">Delete</a>
-    </li>
+        {{ keyword }} <a class="btn btn-danger" href="/delete-keyword/{{ loop.index0 }}" role="button">Delete</a>
+        <hr>
     {% endfor %}
-</ul>
+
 
         <form action="/add-site" method="post" class="mb-3">
             <div class="form-group">
