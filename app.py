@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
@@ -122,31 +122,6 @@ def show_alerts():
         sanitized_alerts.append(alert)
     return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
 
-from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
-import requests
-from bs4 import BeautifulSoup
-from pymongo import MongoClient
-from datetime import datetime
-import dateutil.parser
-import bleach
-import re
-
-app = Flask(__name__)
-app.secret_key = 'your_secret_key'
-
-client = MongoClient('mongodb://mongodb:27017/')
-db = client['media_monitoring']
-collection = db['alerts']
-
-def load_config_from_db():
-    config = db['configurations'].find_one({"name": "default"})
-    if not config:
-        raise Exception("Failed to load configuration from MongoDB")
-    return config
-
-config = load_config_from_db()
-sites = config['sites']
-keywords = [keyword.lower() for keyword in config['keywords']]
 
 @app.route('/config-management')
 def config_management():
@@ -184,27 +159,6 @@ def delete_keyword(index):
     except IndexError:
         flash("Keyword index out of range", "danger")
     return redirect(url_for('config_management'))
-
-@app.route('/alerts')
-def show_alerts():
-    config = load_config_from_db()
-    page = int(request.args.get('page', 1))
-    per_page = 20
-    skip = (page - 1) * per_page
-    search_query = request.args.get('search', '')
-    query = {}
-    if search_query:
-        regex_pattern = f".*{search_query}.*"
-        query = {"$or": [{"title": {"$regex": regex_pattern, "$options": "i"}}, {"description": {"$regex": regex_pattern, "$options": "i"}}]}
-    alerts = collection.find(query).skip(skip).limit(per_page)
-    total_alerts = collection.count_documents(query)
-    total_pages = (total_alerts + per_page - 1) // per_page
-    sanitized_alerts = []
-    for alert in alerts:
-        alert['description'] = bleach.clean(highlight_keywords(alert.get('description', ''), config['keywords']), tags=['span'], attributes={'span': ['class']}, strip=True)
-        alert['title'] = bleach.clean(highlight_keywords(alert.get('title', ''), config['keywords']), tags=['span'], attributes={'span': ['class']}, strip=True)
-        sanitized_alerts.append(alert)
-    return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
 
 
 @app.route('/run-script')
