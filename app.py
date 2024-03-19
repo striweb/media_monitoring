@@ -216,10 +216,6 @@ def run_script():
         app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
         return jsonify({"error": "An internal error occurred."})
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-
-
 @app.route('/run-script')
 def run_script():
     try:
