@@ -15,7 +15,7 @@ db = client['media_monitoring']
 collection = db['alerts']
 
 def load_config_from_db():
-    config = db['configurations'].find_one({"name": "default"})
+    config = db['configuration_arrays'].find_one({"name": "default"})
     if config:
         return config
     else:
