@@ -122,6 +122,104 @@ def show_alerts():
         sanitized_alerts.append(alert)
     return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
 
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
+import requests
+from bs4 import BeautifulSoup
+from pymongo import MongoClient
+from datetime import datetime
+import dateutil.parser
+import bleach
+import re
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+
+client = MongoClient('mongodb://mongodb:27017/')
+db = client['media_monitoring']
+collection = db['alerts']
+
+def load_config_from_db():
+    config = db['configurations'].find_one({"name": "default"})
+    if not config:
+        raise Exception("Failed to load configuration from MongoDB")
+    return config
+
+config = load_config_from_db()
+sites = config['sites']
+keywords = [keyword.lower() for keyword in config['keywords']]
+
+@app.route('/config-management')
+def config_management():
+    config = load_config_from_db()
+    return render_template('config_management.html', sites=config['sites'], keywords=config['keywords'])
+
+@app.route('/add-site', methods=['POST'])
+def add_site():
+    site_url = request.form.get('siteUrl')
+    db['configurations'].update_one({"name": "default"}, {"$addToSet": {"sites": site_url}})
+    return redirect(url_for('config_management'))
+
+@app.route('/add-keyword', methods=['POST'])
+def add_keyword():
+    keyword = request.form.get('keyword').lower()
+    db['configurations'].update_one({"name": "default"}, {"$addToSet": {"keywords": keyword}})
+    return redirect(url_for('config_management'))
+
+@app.route('/delete-site/<int:index>', methods=['GET'])
+def delete_site(index):
+    config = load_config_from_db()
+    try:
+        del config['sites'][index]
+        db['configurations'].update_one({"name": "default"}, {"$set": {"sites": config['sites']}})
+    except IndexError:
+        flash("Site index out of range", "danger")
+    return redirect(url_for('config_management'))
+
+@app.route('/delete-keyword/<int:index>', methods=['GET'])
+def delete_keyword(index):
+    config = load_config_from_db()
+    try:
+        del config['keywords'][index]
+        db['configurations'].update_one({"name": "default"}, {"$set": {"keywords": config['keywords']}})
+    except IndexError:
+        flash("Keyword index out of range", "danger")
+    return redirect(url_for('config_management'))
+
+@app.route('/alerts')
+def show_alerts():
+    config = load_config_from_db()
+    page = int(request.args.get('page', 1))
+    per_page = 20
+    skip = (page - 1) * per_page
+    search_query = request.args.get('search', '')
+    query = {}
+    if search_query:
+        regex_pattern = f".*{search_query}.*"
+        query = {"$or": [{"title": {"$regex": regex_pattern, "$options": "i"}}, {"description": {"$regex": regex_pattern, "$options": "i"}}]}
+    alerts = collection.find(query).skip(skip).limit(per_page)
+    total_alerts = collection.count_documents(query)
+    total_pages = (total_alerts + per_page - 1) // per_page
+    sanitized_alerts = []
+    for alert in alerts:
+        alert['description'] = bleach.clean(highlight_keywords(alert.get('description', ''), config['keywords']), tags=['span'], attributes={'span': ['class']}, strip=True)
+        alert['title'] = bleach.clean(highlight_keywords(alert.get('title', ''), config['keywords']), tags=['span'], attributes={'span': ['class']}, strip=True)
+        sanitized_alerts.append(alert)
+    return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
+
+@app.route('/run-script')
+def run_script():
+    try:
+        process_feeds_recursive(config['sites'])
+        return jsonify({"message": "The script was executed successfully!"})
+    except Exception as e:
+        error_info = traceback.format_exc()
+        app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
+        return jsonify({"error": "An internal error occurred."})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+
+
 @app.route('/run-script')
 def run_script():
     try:

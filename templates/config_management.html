@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Management</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Manage Configuration</h2>
+
+        <h3>Current Sites</h3>
+<ul>
+    {% for site in sites %}
+    <li>{{ site }}
+        <a href="/delete-site/{{ loop.index0 }}">Delete</a>
+    </li>
+    {% endfor %}
+</ul>
+
+<h3>Current Keywords</h3>
+<ul>
+    {% for keyword in keywords %}
+    <li>{{ keyword }}
+        <a href="/delete-keyword/{{ loop.index0 }}">Delete</a>
+    </li>
+    {% endfor %}
+</ul>
+
+        <form action="/add-site" method="post" class="mb-3">
+            <div class="form-group">
+                <label for="siteUrl">Add New Site URL:</label>
+                <input type="text" class="form-control" id="siteUrl" name="siteUrl" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Site</button>
+        </form>
+
+        <form action="/add-keyword" method="post">
+            <div class="form-group">
+                <label for="keyword">Add New Keyword:</label>
+                <input type="text" class="form-control" id="keyword" name="keyword" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Keyword</button>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
