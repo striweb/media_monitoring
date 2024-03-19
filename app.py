@@ -206,15 +206,6 @@ def show_alerts():
         sanitized_alerts.append(alert)
     return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
 
-@app.route('/run-script')
-def run_script():
-    try:
-        process_feeds_recursive(config['sites'])
-        return jsonify({"message": "The script was executed successfully!"})
-    except Exception as e:
-        error_info = traceback.format_exc()
-        app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
-        return jsonify({"error": "An internal error occurred."})
 
 @app.route('/run-script')
 def run_script():
