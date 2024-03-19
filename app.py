@@ -17,7 +17,7 @@ collection = db['alerts']
 def load_config_from_db():
     try:
         print("Attempting to load configuration from MongoDB...")
-        config = db['configurations2'].find_one({"name": "default"})
+        config = db['configurations3'].find_one({"name": "default"})
         if config:
             print("Configuration loaded successfully.")
             return config
@@ -131,13 +131,13 @@ def config_management():
 @app.route('/add-site', methods=['POST'])
 def add_site():
     site_url = request.form.get('siteUrl')
-    db['configurations2'].update_one({"name": "default"}, {"$addToSet": {"sites": site_url}})
+    db['configurations3'].update_one({"name": "default"}, {"$addToSet": {"sites": site_url}})
     return redirect(url_for('config_management'))
 
 @app.route('/add-keyword', methods=['POST'])
 def add_keyword():
     keyword = request.form.get('keyword').lower()
-    db['configurations2'].update_one({"name": "default"}, {"$addToSet": {"keywords": keyword}})
+    db['configurations3'].update_one({"name": "default"}, {"$addToSet": {"keywords": keyword}})
     return redirect(url_for('config_management'))
 
 @app.route('/delete-site/<int:index>', methods=['GET'])
@@ -145,7 +145,7 @@ def delete_site(index):
     config = load_config_from_db()
     try:
         del config['sites'][index]
-        db['configurations2'].update_one({"name": "default"}, {"$set": {"sites": config['sites']}})
+        db['configurations3'].update_one({"name": "default"}, {"$set": {"sites": config['sites']}})
     except IndexError:
         flash("Site index out of range", "danger")
     return redirect(url_for('config_management'))
@@ -155,7 +155,7 @@ def delete_keyword(index):
     config = load_config_from_db()
     try:
         del config['keywords'][index]
-        db['configurations2'].update_one({"name": "default"}, {"$set": {"keywords": config['keywords']}})
+        db['configurations3'].update_one({"name": "default"}, {"$set": {"keywords": config['keywords']}})
     except IndexError:
         flash("Keyword index out of range", "danger")
     return redirect(url_for('config_management'))
