@@ -6,11 +6,10 @@ from datetime import datetime, timedelta
 import traceback
 import dateutil.parser
 import bleach
-import re  # Import the re module for regular expressions
+import re
 
 app = Flask(__name__)
 
-# MongoDB client setup
 client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
@@ -86,7 +85,6 @@ def process_feeds_recursive(feeds, index=0):
     process_items_recursive(items, site)
     process_feeds_recursive(feeds, index + 1)
 
-# Highlight keywords in text
 def highlight_keywords(text, keywords):
     for keyword in keywords:
         highlighted_keyword = f"<span class='highlight'>{keyword}</span>"
