@@ -5,7 +5,6 @@ from pymongo import MongoClient
 from datetime import datetime
 import traceback
 import dateutil.parser
-import re
 import bleach
 
 app = Flask(__name__)
@@ -21,7 +20,7 @@ def load_config_from_url(url):
     else:
         raise Exception(f"Failed to load configuration from {url}")
 
-config_url = 'http://striweb.com/media_monitoring_info.json'
+config_url = 'http://example.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
@@ -88,19 +87,28 @@ def process_feeds_recursive(feeds, index=0):
 @app.route('/alerts')
 def show_alerts():
     page = int(request.args.get('page', 1))
-    per_page = 5
+    per_page = 20
     skip = (page - 1) * per_page
+    search_query = request.args.get('search', '')
 
-    alerts = collection.find({}).skip(skip).limit(per_page)
-    sanitized_alerts = []
-    for alert in alerts:
-        alert['description'] = bleach.clean(alert['description'], tags=[], strip=True) if 'description' in alert else 'No Description'
-        sanitized_alerts.append(alert)
+    query = {}
+    if search_query:
+        regex_pattern = f".*{search_query}.*"
+        query = {"$or": [
+            {"title": {"$regex": regex_pattern, "$options": "i"}},
+            {"description": {"$regex": regex_pattern, "$options": "i"}}
+        ]}
 
-    total_alerts = collection.count_documents({})
+    alerts = collection.find(query).skip(skip).limit(per_page)
+    total_alerts = collection.count_documents(query)
     total_pages = (total_alerts + per_page - 1) // per_page
 
-    return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page)
+    sanitized_alerts = []
+    for alert in alerts:
+        alert['description'] = bleach.clean(alert.get('description', ''), tags=[], strip=True)
+        sanitized_alerts.append(alert)
+
+    return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
 
 @app.route('/run-script')
 def run_script():
@@ -114,4 +122,3 @@ def run_script():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-    
