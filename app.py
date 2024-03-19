@@ -14,15 +14,14 @@ client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
-def load_config_from_url(url):
-    response = requests.get(url, headers={'Accept-Charset': 'UTF-8'})
-    if response.status_code == 200:
-        return response.json()
+def load_config_from_db():
+    config = db['configurations'].find_one({"name": "default"})
+    if config:
+        return config
     else:
-        raise Exception(f"Failed to load configuration from {url}")
+        raise Exception("Failed to load configuration from MongoDB")
 
-config_url = 'https://striweb.com/media_monitoring_info.json'
-config = load_config_from_url(config_url)
+config = load_config_from_db()
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
 
@@ -87,7 +86,6 @@ def process_feeds_recursive(feeds, index=0):
 def highlight_keywords(text, keywords):
     for keyword in keywords:
         highlighted_keyword = f"<span class='highlight'>{keyword}</span>"
-        # Use word boundaries (\b) to match the keyword only as a whole word
         pattern = re.compile(r'\b' + re.escape(keyword) + r'\b', re.IGNORECASE)
         text = pattern.sub(highlighted_keyword, text)
     return text
