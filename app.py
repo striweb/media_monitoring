@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
-from datetime import datetime, timedelta
+from datetime import datetime
 import traceback
 import dateutil.parser
 import bleach
@@ -58,7 +58,6 @@ def process_items_recursive(items, site, index=0):
     media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
     content = f"{title} {description}".lower()
     words = content.split()
-
     if check_words_recursive(words, keywords):
         collection.update_one(
             {"link": link}, 
@@ -98,7 +97,6 @@ def show_alerts():
     per_page = 20
     skip = (page - 1) * per_page
     search_query = request.args.get('search', '')
-
     query = {}
     if search_query:
         regex_pattern = f".*{search_query}.*"
@@ -106,19 +104,16 @@ def show_alerts():
             {"title": {"$regex": regex_pattern, "$options": "i"}},
             {"description": {"$regex": regex_pattern, "$options": "i"}}
         ]}
-
     alerts = collection.find(query).skip(skip).limit(per_page)
     total_alerts = collection.count_documents(query)
     total_pages = (total_alerts + per_page - 1) // per_page
-
     sanitized_alerts = []
     for alert in alerts:
-        alert['description'] = bleach.clean(alert.get('description', ''), tags=['span'], strip=True)
-        alert['description'] = highlight_keywords(alert['description'], keywords)
-        alert['title'] = bleach.clean(alert.get('title', ''), tags=['span'], strip=True)
-        alert['title'] = highlight_keywords(alert['title'], keywords)
+        alert['description'] = highlight_keywords(alert.get('description', ''), keywords)
+        alert['title'] = highlight_keywords(alert.get('title', ''), keywords)
+        alert['description'] = bleach.clean(alert['description'], tags=['span'], attributes={'span': ['class']}, strip=True)
+        alert['title'] = bleach.clean(alert['title'], tags=['span'], attributes={'span': ['class']}, strip=True)
         sanitized_alerts.append(alert)
-
     return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
 
 @app.route('/run-script')
