@@ -87,7 +87,8 @@ def process_feeds_recursive(feeds, index=0):
 def highlight_keywords(text, keywords):
     for keyword in keywords:
         highlighted_keyword = f"<span class='highlight'>{keyword}</span>"
-        pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+        # Use word boundaries (\b) to match the keyword only as a whole word
+        pattern = re.compile(r'\b' + re.escape(keyword) + r'\b', re.IGNORECASE)
         text = pattern.sub(highlighted_keyword, text)
     return text
 
