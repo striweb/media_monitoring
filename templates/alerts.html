@@ -32,7 +32,7 @@
 
             <!-- Modal -->
             <div class="modal fade" id="modal{{ loop.index }}" tabindex="-1" aria-labelledby="modalLabel{{ loop.index }}" aria-hidden="true">
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-xl">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title" id="modalLabel{{ loop.index }}">{{ alert['title'] }}</h5>
@@ -41,6 +41,8 @@
                             </button>
                         </div>
                         <div class="modal-body">
+                            <a class="btn btn-primary" href="{{ alert['link'] }}" role="button">Article URL</a>
+                            <br />
                             {{ alert['description'] }}
                         </div>
                         <div class="modal-footer">
