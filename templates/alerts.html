@@ -33,7 +33,7 @@
             {% for alert in alerts %}
             <div class="list-group-item flex-column align-items-start" data-toggle="modal" data-target="#modal{{ loop.index }}">
                 <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">{{ alert['title'] }}</h5>
+                    <h5 class="mb-1">{{ alert['title']|safe }}</h5>
                     <small>{{ alert['pub_date'] }}</small>
                 </div>
             </div>
@@ -50,7 +50,7 @@
                         <div class="modal-body">
                             <a class="btn btn-primary" href="{{ alert['link'] }}" role="button">Article URL</a>
                             <br /><br />
-                            {{ alert['description'] }}
+                            {{ alert['description']|safe }}
                             <br />
                             {% if alert['media_urls'] %}
                                 {% for url in alert['media_urls'] %}
