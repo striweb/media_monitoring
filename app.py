@@ -2,13 +2,15 @@ from flask import Flask, jsonify, render_template, request
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 import traceback
 import dateutil.parser
 import bleach
+import re  # Import the re module for regular expressions
 
 app = Flask(__name__)
 
+# MongoDB client setup
 client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
@@ -84,6 +86,14 @@ def process_feeds_recursive(feeds, index=0):
     process_items_recursive(items, site)
     process_feeds_recursive(feeds, index + 1)
 
+# Highlight keywords in text
+def highlight_keywords(text, keywords):
+    for keyword in keywords:
+        highlighted_keyword = f"<span class='highlight'>{keyword}</span>"
+        pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+        text = pattern.sub(highlighted_keyword, text)
+    return text
+
 @app.route('/alerts')
 def show_alerts():
     page = int(request.args.get('page', 1))
@@ -105,7 +115,10 @@ def show_alerts():
 
     sanitized_alerts = []
     for alert in alerts:
-        alert['description'] = bleach.clean(alert.get('description', ''), tags=[], strip=True)
+        alert['description'] = bleach.clean(alert.get('description', ''), tags=['span'], strip=True)
+        alert['description'] = highlight_keywords(alert['description'], keywords)
+        alert['title'] = bleach.clean(alert.get('title', ''), tags=['span'], strip=True)
+        alert['title'] = highlight_keywords(alert['title'], keywords)
         sanitized_alerts.append(alert)
 
     return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
