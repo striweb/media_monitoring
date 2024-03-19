@@ -15,11 +15,18 @@ db = client['media_monitoring']
 collection = db['alerts']
 
 def load_config_from_db():
-    config = db['configurations'].find_one({"name": "default"})
-    if config:
-        return config
-    else:
-        raise Exception("Failed to load configuration from MongoDB")
+    try:
+        print("Attempting to load configuration from MongoDB...")
+        config = db['configurations'].find_one({"name": "default"})
+        if config:
+            print("Configuration loaded successfully.")
+            return config
+        else:
+            print("No configuration found with name 'default'.")
+            raise Exception("Failed to load configuration from MongoDB")
+    except Exception as e:
+        print(f"An error occurred while loading configuration from MongoDB: {e}")
+        raise
 
 config = load_config_from_db()
 sites = config['sites']
