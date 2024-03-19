@@ -13,7 +13,7 @@
         <h3>Current Sites</h3>
 
     {% for site in sites %}
-        {{ site }} <a class="btn btn-danger" href="/delete-site/{{ loop.index0 }}" role="button">Delete</a>
+        {{ site }} <a class="btn btn-outline-danger btn-sm" href="/delete-site/{{ loop.index0 }}" role="button">Delete</a>
         <hr>
     {% endfor %}
 
@@ -21,7 +21,7 @@
 <h3>Current Keywords</h3>
 
     {% for keyword in keywords %}
-        {{ keyword }} <a class="btn btn-danger" href="/delete-keyword/{{ loop.index0 }}" role="button">Delete</a>
+        {{ keyword }} <a class="btn btn-outline-danger btn-sm" href="/delete-keyword/{{ loop.index0 }}" role="button">Delete</a>
         <hr>
     {% endfor %}
 
