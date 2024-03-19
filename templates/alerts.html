@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alerts</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+        .list-group-item:hover {
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">
         <h2 class="mb-4">Latest Alerts</h2>
         
-        <!-- Search Form -->
         <form action="{{ url_for('show_alerts') }}" method="get" class="mb-4">
             <div class="input-group mb-3">
                 <input type="text" class="form-control" placeholder="Search alerts..." name="search" value="{{ search_query }}">
@@ -20,7 +25,6 @@
             </div>
         </form>
         
-        <!-- Alerts List -->
         <div class="list-group">
             {% for alert in alerts %}
             <div class="list-group-item flex-column align-items-start" data-toggle="modal" data-target="#modal{{ loop.index }}">
@@ -30,7 +34,6 @@
                 </div>
             </div>
 
-            <!-- Modal -->
             <div class="modal fade" id="modal{{ loop.index }}" tabindex="-1" aria-labelledby="modalLabel{{ loop.index }}" aria-hidden="true">
                 <div class="modal-dialog modal-xl">
                     <div class="modal-content">
