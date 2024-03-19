@@ -1,36 +1,81 @@
-from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
+from flask import Flask, jsonify, request, redirect, url_for
+from bson import ObjectId
+from flask.json import JSONEncoder
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime
-import traceback
 import dateutil.parser
 import bleach
 import re
+from celery import Celery
+from flask_cors import CORS
+
+class CustomJSONEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return super(CustomJSONEncoder, self).default(obj)
 
 app = Flask(__name__)
+app.json_encoder = CustomJSONEncoder
+CORS(app)
+app.config.update(
+    CELERY_BROKER_URL='redis://localhost:6379/0',
+    CELERY_RESULT_BACKEND='redis://redis:6379/0'
+)
+
+def make_celery(app):
+    celery = Celery(app.import_name, backend=app.config['CELERY_RESULT_BACKEND'],
+                    broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+    return celery
+
+celery = make_celery(app)
 
 client = MongoClient('mongodb://mongodb:27017/')
 db = client['media_monitoring']
 collection = db['alerts']
 
 def load_config_from_db():
-    try:
-        print("Attempting to load configuration from MongoDB...")
-        config = db['configurations'].find_one({"name": "default"})
-        if config:
-            print("Configuration loaded successfully.")
-            return config
-        else:
-            print("No configuration found with name 'default'.")
-            raise Exception("Failed to load configuration from MongoDB")
-    except Exception as e:
-        print(f"An error occurred while loading configuration from MongoDB: {e}")
-        raise
+    config = db['configurations'].find_one({"name": "default"})
+    if not config:
+        raise Exception("Failed to load configuration from MongoDB")
+    return config
 
-config = load_config_from_db()
-sites = config['sites']
-keywords = [keyword.lower() for keyword in config['keywords']]
+@celery.task(bind=True)
+def process_feeds_task(self, feeds, keywords):
+    for index, site in enumerate(feeds, start=1):
+        response = requests.get(site)
+        soup = BeautifulSoup(response.content, 'xml')
+        items = soup.findAll('item')
+        for item in items:
+            process_item(item, site, keywords)
+        self.update_state(state='PROGRESS', meta={'current': index, 'total': len(feeds)})
+    return {'current': len(feeds), 'total': len(feeds), 'status': 'Task completed'}
+
+def process_item(item, site, keywords):
+    title = get_clean_text(item.find('title')) or 'No Title'
+    description = get_clean_text(item.find('description')) or 'No Description'
+    pub_date = find_pub_date(item)
+    link = item.find('link').text if item.find('link') else 'No Link'
+    media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
+    content = f"{title} {description}".lower()
+    words = content.split()
+    if any(word.lower() in keywords for word in words):
+        collection.update_one(
+            {"link": link}, 
+            {"$setOnInsert": {
+                "site": site,
+                "title": title,
+                "description": description,
+                "pub_date": pub_date,
+                "link": link,
+                "media_urls": media_urls,
+                "last_checked": datetime.now()
+            }},
+            upsert=True
+        )
 
 def find_pub_date(item):
     for field in ['pubDate', 'dc:date']:
@@ -45,59 +90,19 @@ def get_clean_text(element):
         return ' '.join(soup.get_text().split())
     return ""
 
-def check_words_recursive(words, keywords, index=0):
-    if index >= len(words):
-        return False
-    word = words[index].lower()
-    if word in keywords:
-        return True
-    return check_words_recursive(words, keywords, index + 1)
-
-def process_items_recursive(items, site, index=0):
-    if index >= len(items):
-        return
-    item = items[index]
-    title = get_clean_text(item.find('title')) if item.find('title') else 'No Title'
-    description = get_clean_text(item.find('description')) if item.find('description') else 'No Description'
-    pub_date = find_pub_date(item)
-    link = item.find('link').text if item.find('link') else 'No Link'
-    media_urls = [enclosure['url'] for enclosure in item.find_all('enclosure') if 'url' in enclosure.attrs]
-    content = f"{title} {description}".lower()
-    words = content.split()
-    if check_words_recursive(words, keywords):
-        collection.update_one(
-            {"link": link}, 
-            {"$setOnInsert": {
-                "site": site,
-                "title": title,
-                "description": description,
-                "pub_date": pub_date,
-                "link": link,
-                "media_urls": media_urls,
-                "last_checked": datetime.now()
-            }}, 
-            upsert=True
-        )
-    process_items_recursive(items, site, index + 1)
-
-def process_feeds_recursive(feeds, index=0):
-    if index >= len(feeds):
-        return
-    site = feeds[index]
-    response = requests.get(site)
-    soup = BeautifulSoup(response.content, 'xml')
-    items = soup.findAll('item')
-    process_items_recursive(items, site)
-    process_feeds_recursive(feeds, index + 1)
-
 def highlight_keywords(text, keywords):
-    for keyword in keywords:
-        highlighted_keyword = f"<span class='highlight'>{keyword}</span>"
-        pattern = re.compile(r'\b' + re.escape(keyword) + r'\b', re.IGNORECASE)
-        text = pattern.sub(highlighted_keyword, text)
-    return text
+    pattern = re.compile(r'\b(' + '|'.join(re.escape(keyword) for keyword in keywords) + r')\b', re.IGNORECASE)
+    highlighted_text = pattern.sub(lambda match: f"<span class='highlight'>{match.group(0)}</span>", text)
+    return highlighted_text
+
+@app.route('/api/alerts')
+def api_show_alerts():
+    return show_alerts()
 
 @app.route('/alerts')
+def alerts():
+    return show_alerts()
+
 def show_alerts():
     page = int(request.args.get('page', 1))
     per_page = 20
@@ -114,19 +119,18 @@ def show_alerts():
     total_alerts = collection.count_documents(query)
     total_pages = (total_alerts + per_page - 1) // per_page
     sanitized_alerts = []
-    for alert in alerts:
-        alert['description'] = highlight_keywords(alert.get('description', ''), keywords)
-        alert['title'] = highlight_keywords(alert.get('title', ''), keywords)
-        alert['description'] = bleach.clean(alert['description'], tags=['span'], attributes={'span': ['class']}, strip=True)
-        alert['title'] = bleach.clean(alert['title'], tags=['span'], attributes={'span': ['class']}, strip=True)
-        sanitized_alerts.append(alert)
-    return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page, search_query=search_query)
-
-
-@app.route('/config-management')
-def config_management():
     config = load_config_from_db()
-    return render_template('config_management.html', sites=config['sites'], keywords=config['keywords'])
+    keywords = config.get('keywords', [])  # Ensure this line is correctly indented
+    for alert in alerts:
+        alert['description'] = bleach.clean(highlight_keywords(alert.get('description', ''), keywords), tags=['span'], attributes={'span': ['class']}, strip=True)
+        alert['title'] = bleach.clean(highlight_keywords(alert.get('title', ''), keywords), tags=['span'], attributes={'span': ['class']}, strip=True)
+        sanitized_alerts.append(alert)
+    return jsonify({
+        'alerts': sanitized_alerts,
+        'total_pages': total_pages,
+        'current_page': page,
+    })
+
 
 @app.route('/add-site', methods=['POST'])
 def add_site():
@@ -160,16 +164,43 @@ def delete_keyword(index):
         flash("Keyword index out of range", "danger")
     return redirect(url_for('config_management'))
 
-
 @app.route('/run-script')
 def run_script():
+    config = load_config_from_db()
+    task = process_feeds_task.apply_async(args=[config['sites'], config['keywords']])
+    return jsonify({"task_id": task.id}), 202
+
+@app.route('/task-status/<task_id>')
+def task_status(task_id):
+    task = process_feeds_task.AsyncResult(task_id)
     try:
-        process_feeds_recursive(sites)
-        return jsonify({"message": "The script was executed successfully!"})
-    except Exception as e:
-        error_info = traceback.format_exc()
-        app.logger.error(f"An error occurred: {e}\nDetails:\n{error_info}")
-        return jsonify({"error": "An internal error occurred."})
+        if task.state == 'PENDING':
+            response = {'state': task.state, 'status': 'Pending...'}
+        elif task.state != 'FAILURE':
+            response = {
+                'state': task.state,
+                'progress': task.info.get('current', 0),
+                'total': task.info.get('total', 1),
+                'status': task.info.get('status', '')
+            }
+        else:
+            response = {'state': task.state, 'status': str(task.info), 'error': 'Task failed'}
+    except AttributeError:
+        response = {'error': 'Unable to retrieve task status. Please check the task ID and ensure the backend is accessible.'}
+    return jsonify(response)
+
+@app.route('/config-management')
+def config_management():
+    config = load_config_from_db()
+    return render_template('config_management.html', sites=config['sites'], keywords=config['keywords'])
+
+@app.route('/workers')
+def show_workers():
+    i = celery.control.inspect()
+    workers = i.registered()
+    if not workers:
+        workers = "No workers found."
+    return render_template('workers.html', workers=workers)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
