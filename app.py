@@ -6,6 +6,7 @@ from datetime import datetime
 import traceback
 import dateutil.parser
 import re
+import bleach
 
 app = Flask(__name__)
 
@@ -91,10 +92,15 @@ def show_alerts():
     skip = (page - 1) * per_page
 
     alerts = collection.find({}).skip(skip).limit(per_page)
+    sanitized_alerts = []
+    for alert in alerts:
+        alert['description'] = bleach.clean(alert['description'], tags=[], strip=True) if 'description' in alert else 'No Description'
+        sanitized_alerts.append(alert)
+
     total_alerts = collection.count_documents({})
     total_pages = (total_alerts + per_page - 1) // per_page
 
-    return render_template('alerts.html', alerts=list(alerts), total_pages=total_pages, current_page=page)
+    return render_template('alerts.html', alerts=sanitized_alerts, total_pages=total_pages, current_page=page)
 
 @app.route('/run-script')
 def run_script():
