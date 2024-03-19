@@ -20,7 +20,7 @@ def load_config_from_url(url):
     else:
         raise Exception(f"Failed to load configuration from {url}")
 
-config_url = 'http://example.com/media_monitoring_info.json'
+config_url = 'https://striweb.com/media_monitoring_info.json'
 config = load_config_from_url(config_url)
 sites = config['sites']
 keywords = [keyword.lower() for keyword in config['keywords']]
