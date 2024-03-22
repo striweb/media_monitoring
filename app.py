@@ -120,7 +120,7 @@ def show_alerts():
     total_pages = (total_alerts + per_page - 1) // per_page
     sanitized_alerts = []
     config = load_config_from_db()
-    keywords = config.get('keywords', [])  # Ensure this line is correctly indented
+    keywords = config.get('keywords', [])
     for alert in alerts:
         alert['description'] = bleach.clean(highlight_keywords(alert.get('description', ''), keywords), tags=['span'], attributes={'span': ['class']}, strip=True)
         alert['title'] = bleach.clean(highlight_keywords(alert.get('title', ''), keywords), tags=['span'], attributes={'span': ['class']}, strip=True)
